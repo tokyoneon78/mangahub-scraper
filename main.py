@@ -4,16 +4,23 @@ import os
 import requests
 import time
 
+#endpoint to scrape
 api = "https://api.mghubcdn.com/graphql"
+
+#Slug to input e.g "reincarnation-of-the-suicidal-battle-god"
 slug = input("Enter slug:- ")
 
+#converts payload to query endpoint with to json
 payload = json.dumps({
   "query": "{manga(x:m01,slug:\""+ slug +"\"){id,rank,title,slug,status,image,latestChapter,author,artist,genres,description,alternativeTitle,mainSlug,isYaoi,isPorn,isSoftPorn,unauthFile,noCoverAd,isLicensed,createdDate,updatedDate,chapters{id,number,title,slug,date}}}"
 })
+
+#Headers for scraper
 headers = {
   'Content-Type': 'application/json'
 }
 
+#Scraper module configuration
 scraper = cloudscraper.create_scraper(
     browser={
         'browser': 'firefox',
@@ -22,19 +29,30 @@ scraper = cloudscraper.create_scraper(
     }
 )
 
-
+#Query sent to the server works like requests
 response = scraper.request("POST", api, headers=headers, data=payload).text
 
+#Converted output to JSON
 base_data = json.loads(response)
+
+#printing out base info about the manga
+print(base_data)
+
+#Gets a list of the chapters using JSON manipulation
 chapter_number = (base_data["data"]["manga"]["chapters"])
 l = 0
+
+print(chapter_number)
+
+#Creates directory for the slug and switches into it
 os.mkdir(slug)
 os.chdir(slug)
-parent_dir = './'
+parent_dir = os.getcwd()
 
 
-
+#Looping through each chapter received
 for x in chapter_number:
+  #Sleep statement to avoid bot flagging by cloudflare
   time.sleep(1.0)
   rurl = "{\"query\":\"{chapter(x:m01,slug:\\\"" + base_data["data"]["manga"]["slug"] + "\\\",number:" + str(chapter_number[l]["number"]) + "){pages}}\"}"
   
@@ -54,8 +72,8 @@ for x in chapter_number:
     with open("test.json", "a") as write_file:
       json.dump(current_image, write_file, indent=4)
       write_file.write(", \n")
-      download_image = requests.get(current_image).content
-      with open(f"{path}/{count}", "wb+") as f:
+      download_image = scraper.get(current_image).content
+      with open(f"{path}/{count}.jpg", "wb+") as f:
         f.write(download_image)
       count += 1   
   l +=1
